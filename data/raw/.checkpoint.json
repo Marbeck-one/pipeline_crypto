@@ -1,0 +1,15 @@
+{
+  "ids_procesados": [
+    "binancecoin",
+    "ethereum",
+    "bitcoin",
+    "ripple",
+    "solana",
+    "figure-heloc",
+    "tron",
+    "usd-coin",
+    "tether",
+    "dogecoin"
+  ],
+  "ultima_ejecucion": "2026-04-20T04:20:41.195465+00:00"
+}

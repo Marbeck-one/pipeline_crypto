@@ -1,0 +1,20 @@
+2026-04-20 00:20:01,482 [INFO] ==================================================
+2026-04-20 00:20:01,482 [INFO] INICIO DEL PROCESO DE INGESTA
+2026-04-20 00:20:01,482 [INFO] Modo: REAL
+2026-04-20 00:20:01,482 [INFO] Timestamp: 2026-04-20T04:20:01.482853+00:00
+2026-04-20 00:20:01,482 [INFO] Checkpoint cargado: 0 IDs previos registrados.
+2026-04-20 00:20:01,483 [ERROR] Error durante la ingesta: No module named 'requests'
+2026-04-20 00:20:01,483 [INFO] ==================================================
+2026-04-20 00:20:39,927 [INFO] ==================================================
+2026-04-20 00:20:39,927 [INFO] INICIO DEL PROCESO DE INGESTA
+2026-04-20 00:20:39,927 [INFO] Modo: REAL
+2026-04-20 00:20:39,927 [INFO] Timestamp: 2026-04-20T04:20:39.927447+00:00
+2026-04-20 00:20:39,927 [INFO] Checkpoint cargado: 0 IDs previos registrados.
+2026-04-20 00:20:40,815 [INFO] Consultando API de CoinGecko...
+2026-04-20 00:20:41,193 [INFO] API respondio con 10 registros.
+2026-04-20 00:20:41,194 [INFO] Total registros recibidos: 10
+2026-04-20 00:20:41,194 [INFO] Registros nuevos a insertar: 10 de 10.
+2026-04-20 00:20:41,195 [INFO] Registros guardados en 'data/raw/cripto_precios.csv': 10
+2026-04-20 00:20:41,195 [INFO] Checkpoint actualizado correctamente.
+2026-04-20 00:20:41,195 [INFO] INGESTA FINALIZADA CORRECTAMENTE
+2026-04-20 00:20:41,195 [INFO] ==================================================
