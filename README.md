@@ -5,8 +5,20 @@
 
 ## Descripción
 
-Este proyecto implementa la **etapa de ingesta** de un pipeline de datos.  
-El script `ingesta.py` obtiene automáticamente los precios de las 10 principales criptomonedas en tiempo real desde la **API pública de CoinGecko**, aplica una lógica de **ingesta incremental** para no duplicar registros, y almacena los datos organizados en `data/raw/`.
+Este proyecto implementa un **pipeline de datos completo** con sus cinco etapas: fuente, ingesta, limpieza, carga y visualización.  
+Obtiene automáticamente los precios de las 10 principales criptomonedas en tiempo real desde la **API pública de CoinGecko**, aplica ingesta incremental para evitar duplicados, carga los datos en una base de datos SQLite y los presenta en un dashboard interactivo.
+
+---
+
+## Etapas del Pipeline
+
+| Etapa | Componente | Descripción |
+|---|---|---|
+| **Fuente** | CoinGecko API | API pública REST que provee precios, market cap y volumen en tiempo real |
+| **Ingesta** | `ingesta.py` | Consulta la API y guarda los datos en CSV con control incremental |
+| **Limpieza** | `ingesta.py` + `cargar_bd.py` | Selección de columnas, conversión de tipos y filtrado de filas inválidas |
+| **Carga** | `cargar_bd.py` | Inserta los datos en SQLite con `INSERT OR IGNORE` para evitar duplicados |
+| **Visualización** | `dashboard.html` | Dashboard HTML con precios, variaciones 24h, market cap y volumen |
 
 ---
 
@@ -18,10 +30,15 @@ pipeline_cripto/
 │   ├── raw/
 │   │   ├── cripto_precios.csv     ← Datos ingestados
 │   │   └── .checkpoint.json      ← Control incremental
+│   ├── db/
+│   │   └── cripto.db             ← Base de datos SQLite
 │   └── logs/
-│       └── ingesta.log            ← Trazabilidad del proceso
-├── ingesta.py                     ← Script principal
-├── requirements.txt               ← Dependencias
+│       ├── ingesta.log           ← Trazabilidad de la ingesta
+│       └── carga_bd.log          ← Trazabilidad de la carga a BD
+├── ingesta.py                    ← Etapa de ingesta (fuente → CSV)
+├── cargar_bd.py                  ← Etapa de carga (CSV → SQLite)
+├── dashboard.html                ← Visualización del pipeline
+├── requirements.txt              ← Dependencias
 └── README.md
 ```
 
@@ -41,8 +58,10 @@ pip install -r requirements.txt
 
 ## Cómo ejecutar
 
+### 1. Ingesta de datos
 ```bash
-python ingesta.py
+python ingesta.py          # Modo real (requiere internet)
+python ingesta.py --demo   # Modo demo con datos simulados
 ```
 
 Cada ejecución:
@@ -50,6 +69,20 @@ Cada ejecución:
 2. Compara con el checkpoint de ejecuciones anteriores
 3. Guarda **solo los registros nuevos** en el CSV (ingesta incremental)
 4. Actualiza el log con inicio, resultado y cantidad de registros procesados
+
+### 2. Carga a base de datos
+```bash
+python cargar_bd.py
+```
+
+Cada ejecución:
+1. Lee el CSV generado por `ingesta.py`
+2. Crea la tabla `cripto_precios` si no existe
+3. Inserta los registros ignorando duplicados por `(id, last_updated)`
+4. Imprime un resumen con el top 5 por market cap
+
+### 3. Visualización
+Abrir `dashboard.html` directamente en el navegador.
 
 ---
 
@@ -75,13 +108,21 @@ En cada ejecución, el script compara los datos recibidos con ese historial e in
 
 ---
 
+## Limpieza de datos
+
+La limpieza ocurre en dos momentos del pipeline:
+
+- **`ingesta.py`**: selecciona solo las columnas definidas en `COLUMNAS`, descartando campos innecesarios de la API mediante `extrasaction="ignore"`.
+- **`cargar_bd.py`**: convierte los valores numéricos con `float()` y omite con advertencia cualquier fila que contenga datos malformados o tipos incorrectos.
+
+---
+
 ## Trazabilidad (Logging)
 
-El archivo `data/logs/ingesta.log` registra:
-- Timestamp de inicio y fin
-- Cantidad de registros obtenidos desde la API
-- Cantidad de registros nuevos insertados
-- Errores en caso de fallo de conexión u otro problema
+Ambos scripts generan logs en `data/logs/`:
+
+- `ingesta.log`: timestamp de inicio/fin, registros recibidos, nuevos insertados y errores de conexión.
+- `carga_bd.log`: timestamp de inicio/fin, registros leídos del CSV, insertados en BD, duplicados ignorados y resumen del top 5 por market cap.
 
 ---
 
