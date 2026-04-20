@@ -1,0 +1,17 @@
+2026-04-20 14:34:23,402 [INFO] ==================================================
+2026-04-20 14:34:23,403 [INFO] INICIO DE CARGA A BASE DE DATOS
+2026-04-20 14:34:23,403 [INFO] Timestamp: 2026-04-20T18:34:23.403627+00:00
+2026-04-20 14:34:23,404 [INFO] Conectado a BD SQLite: data/db/cripto.db
+2026-04-20 14:34:23,413 [INFO] Tabla 'cripto_precios' verificada/creada correctamente.
+2026-04-20 14:34:23,421 [INFO] Registros leídos del CSV : 10
+2026-04-20 14:34:23,422 [INFO] Registros insertados en BD: 10
+2026-04-20 14:34:23,422 [INFO] Duplicados ignorados      : 0
+2026-04-20 14:34:23,423 [INFO] Total de registros en BD: 10
+2026-04-20 14:34:23,423 [INFO] Top 5 por market cap:
+2026-04-20 14:34:23,424 [INFO]   Bitcoin      | Precio: $ 74,517.00 | Market Cap: $   1,491,885,246,776
+2026-04-20 14:34:23,425 [INFO]   Ethereum     | Precio: $  2,284.15 | Market Cap: $     275,723,491,209
+2026-04-20 14:34:23,425 [INFO]   Tether       | Precio: $      1.00 | Market Cap: $     187,275,077,639
+2026-04-20 14:34:23,425 [INFO]   XRP          | Precio: $      1.41 | Market Cap: $      86,757,835,793
+2026-04-20 14:34:23,425 [INFO]   BNB          | Precio: $    621.27 | Market Cap: $      83,737,758,158
+2026-04-20 14:34:23,425 [INFO] CARGA FINALIZADA CORRECTAMENTE
+2026-04-20 14:34:23,426 [INFO] ==================================================

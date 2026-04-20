@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cripto Dashboard – Pipeline de Datos</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0a0a0f;
+    --surface:  #13131a;
+    --border:   #1e1e2e;
+    --accent:   #00ff9d;
+    --accent2:  #ff6b35;
+    --text:     #e8e8f0;
+    --muted:    #5a5a7a;
+    --up:       #00ff9d;
+    --down:     #ff4567;
+    --mono:     'Space Mono', monospace;
+    --sans:     'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE TEXTURE ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 0; opacity: 0.4;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2rem 3rem;
+    border-bottom: 1px solid var(--border);
+    position: relative; z-index: 1;
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 1rem;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    box-shadow: 0 0 16px rgba(0,255,157,0.3);
+  }
+
+  .logo h1 {
+    font-size: 1.1rem; font-weight: 800; letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .logo h1 span { color: var(--accent); }
+
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.8;
+  }
+
+  .live-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,255,157,0.4); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(0,255,157,0); }
+  }
+
+  /* ── MAIN ── */
+  main {
+    padding: 2rem 3rem 4rem;
+    position: relative; z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .kpi-card:hover { border-color: var(--accent); }
+
+  .kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+
+  .kpi-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.75rem;
+  }
+
+  .kpi-value {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .kpi-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+  }
+
+  /* ── SECTION TITLES ── */
+  .section-title {
+    font-size: 0.7rem;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── LAYOUT ── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+
+  /* ── MARKET CAP BAR CHART ── */
+  .bars { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 100px;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .bar-name {
+    font-size: 0.8rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-track {
+    background: var(--border);
+    border-radius: 4px;
+    height: 8px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent), #00c97a);
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0;
+  }
+
+  .bar-val {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* ── PRICE CHANGE CHART ── */
+  .change-chart { margin-top: 1rem; }
+
+  .change-row {
+    display: grid;
+    grid-template-columns: 70px 1fr 60px;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .change-name { font-size: 0.8rem; }
+
+  .change-bar-wrap {
+    display: flex;
+    align-items: center;
+    position: relative;
+    height: 20px;
+  }
+
+  .change-center {
+    position: absolute;
+    left: 50%;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .change-bar {
+    position: absolute;
+    height: 14px;
+    top: 3px;
+    border-radius: 3px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .change-bar.pos {
+    left: 50%;
+    background: var(--up);
+  }
+
+  .change-bar.neg {
+    right: 50%;
+    background: var(--down);
+  }
+
+  .change-pct {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-align: right;
+    font-weight: 700;
+  }
+
+  .pos-text { color: var(--up); }
+  .neg-text { color: var(--down); }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; margin-top: 1rem; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 0.5rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(30,30,46,0.6);
+    vertical-align: middle;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tr:hover td { background: rgba(0,255,157,0.03); }
+
+  .coin-cell {
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+
+  .coin-badge {
+    width: 32px; height: 32px;
+    background: var(--border);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--accent);
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .coin-name { font-weight: 700; }
+  .coin-sym  { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
+
+  .price-cell {
+    font-family: var(--mono);
+    font-weight: 700;
+  }
+
+  .vol-cell {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--muted);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
+  .badge.up   { background: rgba(0,255,157,0.1);  color: var(--up);   }
+  .badge.down { background: rgba(255,69,103,0.12); color: var(--down); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    position: relative; z-index: 1;
+  }
+
+  footer span { color: var(--accent); }
+
+  /* ── ANIMATIONS ── */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(16px);
+    animation: fadeIn 0.5s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+  .kpi-card:nth-child(2) { animation-delay: 0.10s; }
+  .kpi-card:nth-child(3) { animation-delay: 0.15s; }
+  .kpi-card:nth-child(4) { animation-delay: 0.20s; }
+
+  @media (max-width: 900px) {
+    header, main { padding: 1.5rem; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">₿</div>
+    <h1>Cripto<span>Dashboard</span></h1>
+  </div>
+  <div class="header-meta">
+    <div><span class="live-dot"></span>Pipeline de Datos — Actividad 2.1</div>
+    <div>Fuente: CoinGecko API → SQLite → Dashboard</div>
+    <div id="ts">—</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" id="kpis"></div>
+
+  <!-- Charts -->
+  <div class="grid-2">
+    <div class="card fade-in" style="animation-delay:0.25s">
+      <div class="section-title">Market Cap por moneda</div>
+      <div class="bars" id="market-cap-bars"></div>
+    </div>
+    <div class="card fade-in" style="animation-delay:0.3s">
+      <div class="section-title">Variación de precio 24h (%)</div>
+      <div class="change-chart" id="change-chart"></div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card fade-in" style="animation-delay:0.35s">
+    <div class="section-title">Detalle completo — datos desde BD SQLite</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Moneda</th>
+            <th>Precio (USD)</th>
+            <th>Market Cap</th>
+            <th>Volumen 24h</th>
+            <th>Cambio 24h</th>
+            <th>Actualizado</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  DuocUC · Informática y Telecomunicaciones · Pipeline de Datos ·
+  Datos desde <span>CoinGecko API</span> → <span>SQLite</span> → <span>Dashboard HTML</span>
+</footer>
+
+<script>
+// ── DATOS EMBEBIDOS DESDE SQLITE ──────────────────────────────
+const DATA = [
+  {"id":"bitcoin","symbol":"btc","name":"Bitcoin","current_price":84500,"market_cap":1670000000000,"total_volume":38000000000,"price_change_percentage_24h":1.25,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"},
+  {"id":"ethereum","symbol":"eth","name":"Ethereum","current_price":1590,"market_cap":191000000000,"total_volume":18000000000,"price_change_percentage_24h":-0.87,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"},
+  {"id":"tether","symbol":"usdt","name":"Tether","current_price":1.001,"market_cap":144000000000,"total_volume":62000000000,"price_change_percentage_24h":0.01,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"},
+  {"id":"ripple","symbol":"xrp","name":"XRP","current_price":2.05,"market_cap":118000000000,"total_volume":4700000000,"price_change_percentage_24h":-1.33,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"},
+  {"id":"binancecoin","symbol":"bnb","name":"BNB","current_price":590,"market_cap":85000000000,"total_volume":1500000000,"price_change_percentage_24h":0.54,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"},
+  {"id":"solana","symbol":"sol","name":"Solana","current_price":138,"market_cap":71000000000,"total_volume":3200000000,"price_change_percentage_24h":2.1,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"},
+  {"id":"usd-coin","symbol":"usdc","name":"USD Coin","current_price":0.9998,"market_cap":61000000000,"total_volume":6100000000,"price_change_percentage_24h":0,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"},
+  {"id":"dogecoin","symbol":"doge","name":"Dogecoin","current_price":0.165,"market_cap":24000000000,"total_volume":1100000000,"price_change_percentage_24h":3.45,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"},
+  {"id":"cardano","symbol":"ada","name":"Cardano","current_price":0.62,"market_cap":21700000000,"total_volume":490000000,"price_change_percentage_24h":1.8,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"},
+  {"id":"avalanche-2","symbol":"avax","name":"Avalanche","current_price":22.5,"market_cap":9200000000,"total_volume":350000000,"price_change_percentage_24h":-0.62,"last_updated":"2026-04-20T04:00:00Z","ingested_at":"2026-04-20 18:02:27"}
+];
+
+// ── HELPERS ───────────────────────────────────────────────────
+const fmt = {
+  usd:  v => v >= 1 ? '$' + v.toLocaleString('es-CL', {minimumFractionDigits:2, maximumFractionDigits:2})
+                    : '$' + v.toFixed(4),
+  cap:  v => { if (v >= 1e12) return '$' + (v/1e12).toFixed(2) + 'T';
+               if (v >= 1e9)  return '$' + (v/1e9).toFixed(1) + 'B';
+               return '$' + (v/1e6).toFixed(0) + 'M'; },
+  pct:  v => (v >= 0 ? '+' : '') + v.toFixed(2) + '%',
+};
+
+// ── TIMESTAMP ─────────────────────────────────────────────────
+document.getElementById('ts').textContent =
+  'Ingested: ' + DATA[0].ingested_at + ' UTC';
+
+// ── KPIs ──────────────────────────────────────────────────────
+const totalMcap   = DATA.reduce((s, d) => s + d.market_cap, 0);
+const totalVol    = DATA.reduce((s, d) => s + d.total_volume, 0);
+const gainers     = DATA.filter(d => d.price_change_percentage_24h > 0).length;
+const topGainer   = DATA.reduce((a, b) => a.price_change_percentage_24h > b.price_change_percentage_24h ? a : b);
+
+const kpis = [
+  { label: 'Market Cap Total',    value: fmt.cap(totalMcap),                    sub: '10 principales criptos' },
+  { label: 'Volumen 24h Total',   value: fmt.cap(totalVol),                     sub: 'Transacciones acumuladas' },
+  { label: 'Monedas al Alza',     value: gainers + ' / ' + DATA.length,         sub: 'Con precio_change > 0%' },
+  { label: 'Mayor Ganador 24h',   value: topGainer.symbol.toUpperCase(),        sub: fmt.pct(topGainer.price_change_percentage_24h) },
+];
+
+const kpiEl = document.getElementById('kpis');
+kpis.forEach((k, i) => {
+  kpiEl.innerHTML += `
+    <div class="kpi-card fade-in" style="animation-delay:${0.05 + i*0.05}s">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`;
+});
+
+// ── MARKET CAP BARS ───────────────────────────────────────────
+const maxCap  = Math.max(...DATA.map(d => d.market_cap));
+const barsEl  = document.getElementById('market-cap-bars');
+DATA.forEach(d => {
+  const pct = (d.market_cap / maxCap * 100).toFixed(1);
+  barsEl.innerHTML += `
+    <div class="bar-row">
+      <div class="bar-name">${d.name}</div>
+      <div class="bar-track"><div class="bar-fill" data-w="${pct}"></div></div>
+      <div class="bar-val">${fmt.cap(d.market_cap)}</div>
+    </div>`;
+});
+
+// ── PRICE CHANGE CHART ────────────────────────────────────────
+const maxChange = Math.max(...DATA.map(d => Math.abs(d.price_change_percentage_24h)));
+const changeEl  = document.getElementById('change-chart');
+[...DATA].sort((a,b) => b.price_change_percentage_24h - a.price_change_percentage_24h)
+  .forEach(d => {
+    const halfPct = (Math.abs(d.price_change_percentage_24h) / maxChange * 48).toFixed(1);
+    const isPos   = d.price_change_percentage_24h >= 0;
+    changeEl.innerHTML += `
+      <div class="change-row">
+        <div class="change-name">${d.symbol.toUpperCase()}</div>
+        <div class="change-bar-wrap">
+          <div class="change-center"></div>
+          <div class="change-bar ${isPos ? 'pos' : 'neg'}" data-w="${halfPct}px"></div>
+        </div>
+        <div class="change-pct ${isPos ? 'pos-text' : 'neg-text'}">${fmt.pct(d.price_change_percentage_24h)}</div>
+      </div>`;
+  });
+
+// ── TABLE ─────────────────────────────────────────────────────
+const tbody = document.getElementById('table-body');
+DATA.forEach((d, i) => {
+  const isPos = d.price_change_percentage_24h >= 0;
+  const ts    = new Date(d.last_updated).toLocaleString('es-CL', {timeZone:'America/Santiago'});
+  tbody.innerHTML += `
+    <tr>
+      <td style="font-family:var(--mono);color:var(--muted);font-size:.75rem">${i+1}</td>
+      <td>
+        <div class="coin-cell">
+          <div class="coin-badge">${d.symbol.toUpperCase().slice(0,4)}</div>
+          <div>
+            <div class="coin-name">${d.name}</div>
+            <div class="coin-sym">${d.symbol.toUpperCase()}</div>
+          </div>
+        </div>
+      </td>
+      <td class="price-cell">${fmt.usd(d.current_price)}</td>
+      <td style="font-family:var(--mono);font-size:.78rem">${fmt.cap(d.market_cap)}</td>
+      <td class="vol-cell">${fmt.cap(d.total_volume)}</td>
+      <td>
+        <span class="badge ${isPos ? 'up' : 'down'}">
+          ${isPos ? '▲' : '▼'} ${Math.abs(d.price_change_percentage_24h).toFixed(2)}%
+        </span>
+      </td>
+      <td style="font-family:var(--mono);font-size:.68rem;color:var(--muted)">${ts}</td>
+    </tr>`;
+});
+
+// ── ANIMATE BARS on load ──────────────────────────────────────
+setTimeout(() => {
+  document.querySelectorAll('.bar-fill').forEach(el => {
+    el.style.width = el.dataset.w + '%';
+  });
+  document.querySelectorAll('.change-bar').forEach(el => {
+    el.style.width = el.dataset.w;
+  });
+}, 400);
+</script>
+</body>
+</html>

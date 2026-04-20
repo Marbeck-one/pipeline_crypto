@@ -18,3 +18,15 @@
 2026-04-20 00:20:41,195 [INFO] Checkpoint actualizado correctamente.
 2026-04-20 00:20:41,195 [INFO] INGESTA FINALIZADA CORRECTAMENTE
 2026-04-20 00:20:41,195 [INFO] ==================================================
+2026-04-20 14:34:16,108 [INFO] ==================================================
+2026-04-20 14:34:16,108 [INFO] INICIO DEL PROCESO DE INGESTA
+2026-04-20 14:34:16,109 [INFO] Modo: REAL
+2026-04-20 14:34:16,109 [INFO] Timestamp: 2026-04-20T18:34:16.109322+00:00
+2026-04-20 14:34:16,109 [INFO] Checkpoint cargado: 10 IDs previos registrados.
+2026-04-20 14:34:16,222 [INFO] Consultando API de CoinGecko...
+2026-04-20 14:34:16,680 [INFO] API respondio con 10 registros.
+2026-04-20 14:34:16,683 [INFO] Total registros recibidos: 10
+2026-04-20 14:34:16,683 [INFO] Registros nuevos a insertar: 0 de 10.
+2026-04-20 14:34:16,683 [INFO] Sin datos nuevos. Ingesta incremental sin cambios.
+2026-04-20 14:34:16,684 [INFO] INGESTA FINALIZADA CORRECTAMENTE
+2026-04-20 14:34:16,684 [INFO] ==================================================
