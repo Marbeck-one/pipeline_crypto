@@ -7,6 +7,7 @@ source .venv/bin/activate
 
 # Ejecutar el pipeline
 python ingesta.py
+python limpieza.py
 python cargar_bd.py
 python actualizar_dashboard.py
 

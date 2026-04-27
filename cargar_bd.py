@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────
 # Configuración
 # ─────────────────────────────────────────────
-CSV_ORIGEN  = "data/raw/cripto_precios.csv"
+CSV_ORIGEN  = "data/processed/cripto_precios_limpio.csv"
 DB_DESTINO  = "data/db/cripto.db"
 
 
