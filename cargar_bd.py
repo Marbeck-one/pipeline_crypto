@@ -1,6 +1,6 @@
 """
-cargar_bd.py — Carga los datos del CSV a una base de datos SQLite
-Actividad 2.1 – Pipeline de Datos: Carga a BD
+cargar_bd.py — Carga los datos del CSV limpio a Supabase (PostgreSQL)
+Fase 1A – Migración SQLite → Supabase
 
 Uso:
     python cargar_bd.py
@@ -8,15 +8,17 @@ Uso:
 
 import os
 import csv
-import sqlite3
 import logging
+import psycopg2
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ─────────────────────────────────────────────
-# Configuración de logging
+# Logging
 # ─────────────────────────────────────────────
 os.makedirs("data/logs", exist_ok=True)
-os.makedirs("data/db", exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,51 +33,74 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────
 # Configuración
 # ─────────────────────────────────────────────
-CSV_ORIGEN  = "data/processed/cripto_precios_limpio.csv"
-DB_DESTINO  = "data/db/cripto.db"
+CSV_ORIGEN = "data/processed/cripto_precios_limpio.csv"
+
+DB_CONFIG = {
+    "host":     os.getenv("DB_HOST"),
+    "port":     os.getenv("DB_PORT", 5432),
+    "dbname":   os.getenv("DB_NAME", "postgres"),
+    "user":     os.getenv("DB_USER", "postgres"),
+    "password": os.getenv("DB_PASSWORD"),
+    "sslmode":  "require",          # Supabase exige SSL
+    "connect_timeout": 10,
+}
 
 
-def crear_tabla(conn: sqlite3.Connection) -> None:
-    """Crea la tabla cripto_precios si no existe."""
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS cripto_precios (
-            id                          TEXT NOT NULL,
-            symbol                      TEXT,
-            name                        TEXT,
-            current_price               REAL,
-            market_cap                  REAL,
-            total_volume                REAL,
-            price_change_percentage_24h REAL,
-            last_updated                TEXT,
-            ingested_at                 TEXT DEFAULT (datetime('now')),
-            PRIMARY KEY (id, last_updated)
-        )
-    """)
+# ─────────────────────────────────────────────
+# Módulos
+# ─────────────────────────────────────────────
+
+def conectar() -> psycopg2.extensions.connection:
+    """Establece y retorna la conexión a Supabase."""
+    conn = psycopg2.connect(**DB_CONFIG)
+    logger.info("Conexión a Supabase establecida correctamente.")
+    return conn
+
+
+def crear_tabla(conn) -> None:
+    """Crea la tabla si no existe (idempotente)."""
+    with conn.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS cripto_precios (
+                id                          TEXT NOT NULL,
+                symbol                      TEXT,
+                name                        TEXT,
+                current_price               NUMERIC,
+                market_cap                  NUMERIC,
+                total_volume                NUMERIC,
+                price_change_percentage_24h NUMERIC,
+                last_updated                TEXT,
+                ingested_at                 TIMESTAMPTZ DEFAULT NOW(),
+                PRIMARY KEY (id, last_updated)
+            );
+        """)
     conn.commit()
-    logger.info("Tabla 'cripto_precios' verificada/creada correctamente.")
+    logger.info("Tabla 'cripto_precios' verificada/creada.")
 
 
-def cargar_csv_a_bd(conn: sqlite3.Connection) -> tuple[int, int]:
+def cargar_csv(conn) -> tuple[int, int]:
     """
-    Inserta registros del CSV en la BD, ignorando duplicados.
+    Inserta registros desde el CSV limpio usando ON CONFLICT DO NOTHING
+    para evitar duplicados por la PK compuesta (id, last_updated).
     Retorna (total_leidos, total_insertados).
     """
     if not os.path.exists(CSV_ORIGEN):
-        raise FileNotFoundError(f"No se encontró el archivo CSV: {CSV_ORIGEN}")
+        raise FileNotFoundError(f"CSV no encontrado: {CSV_ORIGEN}")
 
-    total_leidos    = 0
-    total_insertados = 0
+    leidos     = 0
+    insertados = 0
 
-    with open(CSV_ORIGEN, "r", encoding="utf-8") as f:
+    with open(CSV_ORIGEN, "r", encoding="utf-8") as f, conn.cursor() as cur:
         reader = csv.DictReader(f)
         for fila in reader:
-            total_leidos += 1
+            leidos += 1
             try:
-                conn.execute("""
-                    INSERT OR IGNORE INTO cripto_precios
+                cur.execute("""
+                    INSERT INTO cripto_precios
                         (id, symbol, name, current_price, market_cap,
                          total_volume, price_change_percentage_24h, last_updated)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id, last_updated) DO NOTHING;
                 """, (
                     fila["id"],
                     fila["symbol"],
@@ -86,46 +111,56 @@ def cargar_csv_a_bd(conn: sqlite3.Connection) -> tuple[int, int]:
                     float(fila["price_change_percentage_24h"]),
                     fila["last_updated"],
                 ))
-                if conn.execute("SELECT changes()").fetchone()[0]:
-                    total_insertados += 1
+                if cur.rowcount:
+                    insertados += 1
             except Exception as e:
-                logger.warning(f"Fila omitida ({fila.get('id', '?')}): {e}")
+                logger.warning(f"Fila omitida ({fila.get('id','?')}): {e}")
+                conn.rollback()
 
     conn.commit()
-    return total_leidos, total_insertados
+    return leidos, insertados
 
 
-def mostrar_resumen(conn: sqlite3.Connection) -> None:
-    """Imprime un resumen de los datos almacenados en la BD."""
-    total = conn.execute("SELECT COUNT(*) FROM cripto_precios").fetchone()[0]
-    logger.info(f"Total de registros en BD: {total}")
+def mostrar_resumen(conn) -> None:
+    """Loguea el top 5 por market cap desde Supabase."""
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT name, current_price, market_cap
+            FROM cripto_precios
+            ORDER BY market_cap DESC
+            LIMIT 5;
+        """)
+        rows = cur.fetchall()
 
+    total_query = "SELECT COUNT(*) FROM cripto_precios"
+    with conn.cursor() as cur:
+        cur.execute(total_query)
+        total = cur.fetchone()[0]
+
+    logger.info(f"Total registros en Supabase: {total}")
     logger.info("Top 5 por market cap:")
-    rows = conn.execute("""
-        SELECT name, current_price, market_cap
-        FROM cripto_precios
-        ORDER BY market_cap DESC
-        LIMIT 5
-    """).fetchall()
     for r in rows:
-        logger.info(f"  {r[0]:12s} | Precio: ${r[1]:>10,.2f} | Market Cap: ${r[2]:>20,.0f}")
+        logger.info(f"  {r[0]:15s} | Precio: ${r[1]:>10,.2f} | Market Cap: ${r[2]:>20,.0f}")
 
+
+# ─────────────────────────────────────────────
+# Main
+# ─────────────────────────────────────────────
 
 def main():
     logger.info("=" * 50)
-    logger.info("INICIO DE CARGA A BASE DE DATOS")
+    logger.info("INICIO DE CARGA A SUPABASE")
     logger.info(f"Timestamp: {datetime.now(timezone.utc).isoformat()}")
 
+    conn = None
     try:
-        conn = sqlite3.connect(DB_DESTINO)
-        logger.info(f"Conectado a BD SQLite: {DB_DESTINO}")
-
+        conn = conectar()
         crear_tabla(conn)
 
-        leidos, insertados = cargar_csv_a_bd(conn)
-        logger.info(f"Registros leídos del CSV : {leidos}")
-        logger.info(f"Registros insertados en BD: {insertados}")
-        logger.info(f"Duplicados ignorados      : {leidos - insertados}")
+        leidos, insertados = cargar_csv(conn)
+        logger.info(f"Registros leídos   : {leidos}")
+        logger.info(f"Registros insertados: {insertados}")
+        logger.info(f"Duplicados ignorados: {leidos - insertados}")
 
         mostrar_resumen(conn)
         logger.info("CARGA FINALIZADA CORRECTAMENTE")
@@ -134,8 +169,9 @@ def main():
         logger.error(f"Error durante la carga: {e}")
         raise
     finally:
-        if 'conn' in locals():
+        if conn:
             conn.close()
+            logger.info("Conexión cerrada.")
         logger.info("=" * 50)
 
 
